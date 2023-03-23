@@ -13,10 +13,10 @@ using NLog;
 namespace RedisRtd
 {
     [
-        Guid("0FD27211-C7C4-49D8-B6D9-0BF953DC88B0"),
+        Guid("E127B4C0-8E57-47D1-9637-EEEA31510B35"),
         // This is the string that names RTD server.
         // Users will use it from Excel: =RTD("redis",, ....)
-        ProgId("redis")
+        ProgId("hazelcast")
     ]
     public class HazelcastRtdServer : IRtdServer
     {
@@ -33,7 +33,7 @@ namespace RedisRtd
 
         private const string CLOCK = "CLOCK";
         private const string LAST_RTD = "LAST_RTD";
-        private Dictionary<string, ISubscriber> _subscribers = new Dictionary<string, ISubscriber>();
+        //private Dictionary<string, ISubscriber> _subscribers = new Dictionary<string, ISubscriber>();
 
         public HazelcastRtdServer ()
         {
@@ -136,42 +136,42 @@ namespace RedisRtd
                 if (_subMgr.Subscribe(topicId, host, channel, field))
                     return _subMgr.GetValue(topicId); // already subscribed 
 
-                if (!_subscribers.TryGetValue(host, out ISubscriber subscriber))
-                {
-                    ConnectionMultiplexer connection = ConnectionMultiplexer.Connect(host);
-                    _subscribers[host] = subscriber = connection.GetSubscriber();
-                }
+                //if (!_subscribers.TryGetValue(host, out ISubscriber subscriber))
+                //{
+                //    ConnectionMultiplexer connection = ConnectionMultiplexer.Connect(host);
+                //    _subscribers[host] = subscriber = connection.GetSubscriber();
+                //}
 
-                Logger.Debug($"subscribing to {channel}");
+                //Logger.Debug($"subscribing to {channel}");
 
-                subscriber.Subscribe(channel, (chan, message) => {
-                    var rtdSubTopic = SubscriptionManager.FormatPath(host, chan);
-                    try
-                    {
-                        var str = message.ToString();
-                        _subMgr.Set(rtdSubTopic, str);
+                //subscriber.Subscribe(channel, (chan, message) => {
+                //    var rtdSubTopic = SubscriptionManager.FormatPath(host, chan);
+                //    try
+                //    {
+                //        var str = message.ToString();
+                //        _subMgr.Set(rtdSubTopic, str);
 
-                        if (str.StartsWith("{"))
-                        {
-                            var jo = JsonConvert.DeserializeObject<Dictionary<String, object>>(str);
+                //        if (str.StartsWith("{"))
+                //        {
+                //            var jo = JsonConvert.DeserializeObject<Dictionary<String, object>>(str);
 
-                            lock (_syncLock)
-                            {
-                                foreach (string field_in in jo.Keys)
-                                {
-                                    var rtdTopicString = SubscriptionManager.FormatPath(host, channel, field_in);
-                                    object val = jo[field_in];
+                //            lock (_syncLock)
+                //            {
+                //                foreach (string field_in in jo.Keys)
+                //                {
+                //                    var rtdTopicString = SubscriptionManager.FormatPath(host, channel, field_in);
+                //                    object val = jo[field_in];
 
-                                    _subMgr.Set(rtdTopicString, val);
-                                }
-                            } 
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _subMgr.Set(rtdSubTopic, ex.Message);
-                    }
-                });
+                //                    _subMgr.Set(rtdTopicString, val);
+                //                }
+                //            } 
+                //        }
+                //    }
+                //    catch (Exception ex)
+                //    {
+                //        _subMgr.Set(rtdSubTopic, ex.Message);
+                //    }
+                //});
             }
             catch (Exception ex)
             {

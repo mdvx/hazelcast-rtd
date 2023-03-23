@@ -5,14 +5,14 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("Redis MQ-RTD")]
-[assembly: AssemblyProduct("redis-rtd")]
-[assembly: AssemblyCopyright("Copyright © 2018 Marc Deveaux")]
+[assembly: AssemblyTitle("Hazelcast RTD")]
+[assembly: AssemblyProduct("hazelcast-rtd")]
+[assembly: AssemblyCopyright("Copyright © 2023 Marc Deveaux")]
 
 [assembly: ComVisible(true)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("256EED69-8A03-48BF-B51A-5525291ACB4A")]
+[assembly: Guid("2C12EF07-26BC-48D3-94AC-924FF612A753")]
 
 // Version information for an assembly consists of the following four values:
 //
