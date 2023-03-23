@@ -27,7 +27,7 @@ namespace TestApp
 
         void Run()
         {
-            _rtd = new RedisRtdServer();
+            _rtd = new HazelcastRtdServer();
             _rtd.ServerStart(this);
 
             CancellationTokenSource cts = new CancellationTokenSource();

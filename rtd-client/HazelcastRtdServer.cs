@@ -18,7 +18,7 @@ namespace RedisRtd
         // Users will use it from Excel: =RTD("redis",, ....)
         ProgId("redis")
     ]
-    public class RedisRtdServer : IRtdServer
+    public class HazelcastRtdServer : IRtdServer
     {
         private static readonly ILogger Logger = LogManager.GetCurrentClassLogger();
 
@@ -35,7 +35,7 @@ namespace RedisRtd
         private const string LAST_RTD = "LAST_RTD";
         private Dictionary<string, ISubscriber> _subscribers = new Dictionary<string, ISubscriber>();
 
-        public RedisRtdServer ()
+        public HazelcastRtdServer ()
         {
         }
         // Excel calls this. It's an entry point. It passes us a callback
