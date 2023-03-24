@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Diagnostics;
 
-namespace RedisRtd
+namespace HazelcastRtd
 {
     public class SubscriptionManager
     {

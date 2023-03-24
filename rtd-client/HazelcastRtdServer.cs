@@ -7,13 +7,12 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Threading;
-using StackExchange.Redis;
 using NLog;
 
-namespace RedisRtd
+namespace HazelcastRtd
 {
     [
-        Guid("E127B4C0-8E57-47D1-9637-EEEA31510B35"),
+        Guid("E127B4C0-8E57-47D1-9637-EEEA31510B35"),  // change this GUID for your version
         // This is the string that names RTD server.
         // Users will use it from Excel: =RTD("redis",, ....)
         ProgId("hazelcast")

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace RedisRtd
+namespace HazelcastRtd
 {
     //
     // We provide definition of the RTD interfaces used by Excel

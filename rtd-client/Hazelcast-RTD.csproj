@@ -9,7 +9,7 @@
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>HazelcastRTD</RootNamespace>
-    <AssemblyName>RedisRtd</AssemblyName>
+    <AssemblyName>HazelcastRtd</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <LangVersion>5</LangVersion>
@@ -59,12 +59,6 @@
     </Reference>
     <Reference Include="Pipelines.Sockets.Unofficial, Version=1.0.0.0, Culture=neutral, PublicKeyToken=42ea0a778e13fbe2, processorArchitecture=MSIL">
       <HintPath>..\packages\Pipelines.Sockets.Unofficial.2.2.2\lib\net472\Pipelines.Sockets.Unofficial.dll</HintPath>
-    </Reference>
-    <Reference Include="StackExchange.Redis, Version=2.0.0.0, Culture=neutral, PublicKeyToken=c219ff1ca8c2ce46, processorArchitecture=MSIL">
-      <HintPath>..\packages\StackExchange.Redis.2.6.96\lib\net472\StackExchange.Redis.dll</HintPath>
-    </Reference>
-    <Reference Include="StackExchange.Redis.StrongName, Version=1.2.6.0, Culture=neutral, PublicKeyToken=c219ff1ca8c2ce46, processorArchitecture=MSIL">
-      <HintPath>..\packages\StackExchange.Redis.StrongName.1.2.6\lib\net46\StackExchange.Redis.StrongName.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Buffers, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
