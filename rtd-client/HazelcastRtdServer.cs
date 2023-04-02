@@ -7,228 +7,193 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Threading;
-using NLog;
+using HazelcastRTD;
+using Hazelcast.DistributedObjects;
+using Hazelcast;
+using System.Xml.Linq;
+using Microsoft.Extensions.Logging;
 
 namespace HazelcastRtd
 {
-    [
-        Guid("E127B4C0-8E57-47D1-9637-EEEA31510B35"),  // change this GUID for your version
+    [   // change this GUID for your version
         // This is the string that names RTD server.
-        // Users will use it from Excel: =RTD("redis",, ....)
-        ProgId("hazelcast")
+        // Users will use it from Excel: =RTD("hazelcast",, ....)
+        Guid("BC7560C1-2D7E-48F4-AFB1-57941110DF0B"),
+        ProgId("hazelcast"),
+        ComVisible(true)
     ]
     public class HazelcastRtdServer : IRtdServer
     {
-        private static readonly ILogger Logger = LogManager.GetCurrentClassLogger();
 
-        IRtdUpdateEvent _callback;
+        private IRtdUpdateEvent rtdCallback;
 
-        DispatcherTimer _timer;
-        SubscriptionManager _subMgr;
+        private Dictionary<int, Topic> topics = new Dictionary<int, Topic>();
+        private DataCache cache = new DataCache();
 
-        bool _isExcelNotifiedOfUpdates = false;
-        object _notifyLock = new object();
-        object _syncLock = new object();
-
-        private const string CLOCK = "CLOCK";
-        private const string LAST_RTD = "LAST_RTD";
-        //private Dictionary<string, ISubscriber> _subscribers = new Dictionary<string, ISubscriber>();
-
-        public HazelcastRtdServer ()
+        private IHazelcastClient client;
+        
+        public HazelcastRtdServer()
         {
         }
         // Excel calls this. It's an entry point. It passes us a callback
         // structure which we save for later.
-        int IRtdServer.ServerStart (IRtdUpdateEvent callback)
-        {
-            _callback = callback;
-            _subMgr = new SubscriptionManager(() => {
-                try
-                {
-                    if (_callback != null)
-                    {
-                        if (!_isExcelNotifiedOfUpdates)
-                        {
-                            lock (_notifyLock)
-                            {
-                                _callback.UpdateNotify();
-                                _isExcelNotifiedOfUpdates = true;
-                            }
-                        }
-                    }
-                } catch(Exception ex)  // HRESULT: 0x8001010A (RPC_E_SERVERCALL_RETRYLATER
-                {
-                    Console.WriteLine(ex.Message);
-                }
-            });
-
-            // We will throttle out updates so that Excel can keep up.
-            // It is also important to invoke the Excel callback notify
-            // function from the COM thread. System.Windows.Threading' 
-            // DispatcherTimer will use COM thread's message pump.
-            DispatcherTimer dispatcherTimer = new DispatcherTimer();
-            _timer = dispatcherTimer;
-            _timer.Interval = TimeSpan.FromMilliseconds(95); // this needs to be very frequent
-            _timer.Tick += TimerElapsed;
-            _timer.Start();
-
-            return 1;
-        }
-
-        // Excel calls this when it wants to shut down RTD server.
-        void IRtdServer.ServerTerminate ()
-        {
-            _callback = null;
-        }
-        // Excel calls this when it wants to make a new topic subscription.
-        // topicId becomes the key representing the subscription.
-        // String array contains any aux data user provides to RTD macro.
-        object IRtdServer.ConnectData (int topicId,
-                                       ref Array strings,
-                                       ref bool newValues)
-        {
-            newValues = true;
-
-            if (strings.Length == 1)
-            {
-                string host = strings.GetValue(0).ToString().ToUpperInvariant();
-
-                switch (host)
-                {
-                    case CLOCK:
-                        if(_subMgr.Subscribe(topicId, null, CLOCK))
-                            return _subMgr.GetValue(topicId);
-
-                        return DateTime.Now.ToLocalTime();
-
-                    case LAST_RTD:
-                        if (_subMgr.Subscribe(topicId, null, LAST_RTD))
-                            return _subMgr.GetValue(topicId);
-
-                        return DateTime.Now.ToLocalTime();
-                        //return SubscriptionManager.UninitializedValue;
-                }
-                return "ERROR: Expected: CLOCK or host, name, field";
-            }
-            else if (strings.Length >= 2)
-            {
-                // Crappy COM-style arrays...
-                string host = strings.GetValue(0).ToString().ToUpperInvariant();
-                string channel = strings.GetValue(1).ToString();
-                string field = strings.Length > 2 ? strings.GetValue(2).ToString() : "";
-
-                return SubscribeRedis(topicId, host, channel, field);
-            }
-
-            return "ERROR: Expected: CLOCK or host, key, field";
-        }
-        private object SubscribeRedis(int topicId, string host, string channel, string field)
+        int IRtdServer.ServerStart(IRtdUpdateEvent callback)
         {
             try
             {
+                rtdCallback = callback;
+                cache.DataUpdated += this.DataUpdated;
+
+                //this.client = HazelcastClientFactory.StartNewClientAsync(new HazelcastOptionsBuilder()
+                //            .WithConsoleLogger(LogLevel.Information)
+                //            .Build()).Result;
+
+                return 1;   // SUCCESS
+            }
+            catch (Exception e)
+            {
+                return -1;  // 0 or negative FAIL
+            }
+        }
+
+        // Excel calls this when it wants to make a new topic subscription.
+        // topicId becomes the key representing the subscription.
+        // String array contains any aux data user provides to RTD macro.
+        dynamic IRtdServer.ConnectData(int topicId, ref Array strings, ref bool newValues)
+        {
+            try
+            {
+                newValues = true;
+
+                if (strings.Length == 1)
+                {
+                    return strings.GetValue(0);
+                }
+                else if (strings.Length >= 2)
+                {
+                    // Crappy COM-style arrays...
+                    string host = strings.GetValue(0).ToString().ToUpperInvariant();
+                    string channel = strings.GetValue(1).ToString();
+                    string field = strings.Length > 2 ? strings.GetValue(2).ToString() : "";
+
+                    return SubscribeHazelcast(topicId, host, channel, field);
+                }
+            } catch(Exception e)
+            {
+                return e.ToString();
+            }
+
+            return "ERROR: Need a string";
+        }
+        private object SubscribeHazelcast(int topicId, string host, string channel, string field)
+        {
+            //try
+            //{
                 if (String.IsNullOrEmpty(host))
                     host = "LOCALHOST";
 
                 if (String.IsNullOrEmpty(channel))
-                    return "<channel required>";
+                    return "#channel Required#";
 
-                if (_subMgr.Subscribe(topicId, host, channel, field))
-                    return _subMgr.GetValue(topicId); // already subscribed 
+            //    if (_subMgr.Subscribe(topicId, host, channel, field))
+            //        return _subMgr.GetValue(topicId); // already subscribed 
 
-                //if (!_subscribers.TryGetValue(host, out ISubscriber subscriber))
-                //{
-                //    ConnectionMultiplexer connection = ConnectionMultiplexer.Connect(host);
-                //    _subscribers[host] = subscriber = connection.GetSubscriber();
-                //}
+            //    if (!_subscribers.TryGetValue(host, out Subscriber subscriber))
+            //    {
+            //        IHTopic<string> hzTopic = client.GetTopicAsync<string>("my-topic").Result;
+            //        _subscribers[host] = subscriber = new Subscriber(hzTopic);  
+            //    }
 
-                //Logger.Debug($"subscribing to {channel}");
+            //    Logger.Debug($"subscribing to {channel}");
 
-                //subscriber.Subscribe(channel, (chan, message) => {
-                //    var rtdSubTopic = SubscriptionManager.FormatPath(host, chan);
-                //    try
-                //    {
-                //        var str = message.ToString();
-                //        _subMgr.Set(rtdSubTopic, str);
+            //    object value = subscriber.Subscribe(channel, (chan, message) =>
+            //    {
+            //        var rtdSubTopic = SubscriptionManager.FormatPath(host, chan);
+            //        try
+            //        {
+            //            var str = message.ToString();
+            //            _subMgr.Set(rtdSubTopic, str);
 
-                //        if (str.StartsWith("{"))
-                //        {
-                //            var jo = JsonConvert.DeserializeObject<Dictionary<String, object>>(str);
+            //            if (str.StartsWith("{"))
+            //            {
+            //                var jo = JsonConvert.DeserializeObject<Dictionary<String, object>>(str);
 
-                //            lock (_syncLock)
-                //            {
-                //                foreach (string field_in in jo.Keys)
-                //                {
-                //                    var rtdTopicString = SubscriptionManager.FormatPath(host, channel, field_in);
-                //                    object val = jo[field_in];
+            //                lock (_syncLock)
+            //                {
+            //                    foreach (string field_in in jo.Keys)
+            //                    {
+            //                        var rtdTopicString = SubscriptionManager.FormatPath(host, channel, field_in);
+            //                        object val = jo[field_in];
 
-                //                    _subMgr.Set(rtdTopicString, val);
-                //                }
-                //            } 
-                //        }
-                //    }
-                //    catch (Exception ex)
-                //    {
-                //        _subMgr.Set(rtdSubTopic, ex.Message);
-                //    }
-                //});
-            }
-            catch (Exception ex)
-            {
-                _subMgr.Set(topicId, ex.Message);
-            }
-            return _subMgr.GetValue(topicId);
+            //                        _subMgr.Set(rtdTopicString, val);
+            //                    }
+            //                }
+            //            }
+            //        }
+            //        catch (Exception ex)
+            //        {
+            //            _subMgr.Set(rtdSubTopic, ex.Message);
+            //        }
+            //    });
+            //}
+            //catch (Exception ex)
+            //{
+            //    _subMgr.Set(topicId, ex.Message);
+            //}
+            return cache.GetValue(topicId);
         }
         // Excel calls this when it wants to cancel subscription.
-        void IRtdServer.DisconnectData (int topicId)
+        void IRtdServer.DisconnectData(int topicId)
         {
-            _subMgr.Unsubscribe(topicId);
+            //var symbol = topics[topicId].Symbol;
+            topics.Remove(topicId);
         }
         // Excel calls this every once in a while.
-        int IRtdServer.Heartbeat ()
+        int IRtdServer.Heartbeat()
         {
-            lock (_notifyLock)  
-                _isExcelNotifiedOfUpdates = false;  // just in case it gets stuck
-
             return 1;
         }
+
         // Excel calls this to get changed values. 
-        Array IRtdServer.RefreshData (ref int topicCount)
+        Array IRtdServer.RefreshData(ref int topicCount)
         {
-            try
+            object[,] data = new object[2, topics.Count];
+            int index = 0;
+            foreach (var item in topics)
             {
-                List<SubscriptionManager.UpdatedValue> updates;
-                lock (_syncLock)
-                {
-                    updates = _subMgr.GetUpdatedValues();
-                    topicCount = updates.Count;
-                }
-
-                object[,] data = new object[2, topicCount];
-
-                int i = 0;
-                foreach (var info in updates)
-                {
-                    data[0, i] = info.TopicId;
-                    data[1, i] = info.Value;
-
-                    i++;
-                }
-                return data;
-            } 
-            finally
-            {
-                lock (_notifyLock)
-                    _isExcelNotifiedOfUpdates = false;
+                data[0, index] = item.Key;
+                data[1, index] = cache.GetValue(item.Value.Symbol);
+                index++;
             }
+            topicCount = topics.Count;        //update Excel side topic count
+            return data;
         }
+        private void DataUpdated(object sender, object arg)
+        {
+            if (rtdCallback != null)        //rtdCallback is passed from Excel
+                rtdCallback.UpdateNotify(); //here, notify Excel we have data updated
+        }
+        // Excel calls this when it wants to shut down RTD server.
+        void IRtdServer.ServerTerminate()
+        {
+            rtdCallback = null;
+            
+            if (client != null)
+                client.DestroyAsync(null);
+
+            client = null;
+            topics.Clear();
+        }
+
         // Helper function which checks if new data is available and,
         // if so, notifies Excel about it.
-        private void TimerElapsed (object sender, EventArgs e)
+        private void TimerElapsed(object sender, EventArgs e)
         {
-            if (_subMgr.IsDirty)
-                _subMgr.Set(LAST_RTD, DateTime.Now.ToLocalTime());
+            //if (_subMgr.IsDirty)
+            //    _subMgr.Set(LAST_RTD, DateTime.Now.ToLocalTime());
 
-            _subMgr.Set(CLOCK, DateTime.Now.ToLocalTime());
+            //_subMgr.Set(CLOCK, DateTime.Now.ToLocalTime());
         }
     }
+
 }
