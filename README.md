@@ -21,6 +21,7 @@ Once the RTD server has been installed, you can use it from Excel via the RTD ma
 This is the syntax:
 
 `=RTD("hazelcast.rtd",, "CHANNEL")`
+
 `=RTD("hazelcast.rtd",, "CHANNEL", "FIELD")`   // For JSON data
 
 
