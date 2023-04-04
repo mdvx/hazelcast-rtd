@@ -20,9 +20,8 @@ Excel RTD server sourcing data from Hazelcast
 Once the RTD server has been installed, you can use it from Excel via the RTD macro.
 This is the syntax:
 
-`=RTD("hazelcast",, "HOST","CHANNEL")`
-
-`=RTD("hazelcast",, "HOST","CHANNEL", "FIELD")`   // For JSON data
+`=RTD("hazelcast.rtd",, "CHANNEL")`
+`=RTD("hazelcast.rtd",, "CHANNEL", "FIELD")`   // For JSON data
 
 
 
