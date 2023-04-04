@@ -12,48 +12,65 @@ using Hazelcast.DistributedObjects;
 using Hazelcast;
 using System.Xml.Linq;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
+using Microsoft.Extensions.Options;
 
-namespace HazelcastRtd
+namespace HazelcastRTD
 {
     [   // change this GUID for your version
         // This is the string that names RTD server.
         // Users will use it from Excel: =RTD("hazelcast",, ....)
-        Guid("BC7560C1-2D7E-48F4-AFB1-57941110DF0B"),
-        ProgId("hazelcast"),
+        ProgId("hazelcast.rtd"),
         ComVisible(true)
     ]
+    [Guid("94872AEA-8BBA-4AEE-9965-D9D9878F3834")]
     public class HazelcastRtdServer : IRtdServer
     {
-
         private IRtdUpdateEvent rtdCallback;
 
-        private Dictionary<int, Topic> topics = new Dictionary<int, Topic>();
-        private DataCache cache = new DataCache();
+        private Dictionary<string, int> topics = new Dictionary<string, int>();
 
+        private DataCache cache = new DataCache();
+        private Thread worker;
         private IHazelcastClient client;
-        
+
+
         public HazelcastRtdServer()
+        {
+        }
+        public static void Main(string[] args)
         {
         }
         // Excel calls this. It's an entry point. It passes us a callback
         // structure which we save for later.
         int IRtdServer.ServerStart(IRtdUpdateEvent callback)
         {
-            try
-            {
+            Debug.WriteLine("ServerStart");
+
                 rtdCallback = callback;
                 cache.DataUpdated += this.DataUpdated;
 
-                //this.client = HazelcastClientFactory.StartNewClientAsync(new HazelcastOptionsBuilder()
-                //            .WithConsoleLogger(LogLevel.Information)
-                //            .Build()).Result;
+                Thread worker = new Thread(new ThreadStart(() =>
+                {
+                    try
+                    {
+                        client = HazelcastClientFactory.StartNewClientAsync(new HazelcastOptionsBuilder()
+                                    //.WithConsoleLogger(LogLevel.Information)
+                                    .Build()).Result;
+
+                        client.SubscribeAsync((e) => { Debug.WriteLine("ServerStart: SubscribeAsync", e); }).Wait();
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine("ERR: {}", ex.Message);
+                        //return -1;  // 0 or negative FAIL
+                    }
+
+                }));
+                worker.Start();
+                worker.Join();
 
                 return 1;   // SUCCESS
-            }
-            catch (Exception e)
-            {
-                return -1;  // 0 or negative FAIL
-            }
         }
 
         // Excel calls this when it wants to make a new topic subscription.
@@ -80,73 +97,48 @@ namespace HazelcastRtd
                 }
             } catch(Exception e)
             {
-                return e.ToString();
+                return "#" + e.ToString();
             }
 
             return "ERROR: Need a string";
         }
         private object SubscribeHazelcast(int topicId, string host, string channel, string field)
         {
-            //try
-            //{
-                if (String.IsNullOrEmpty(host))
-                    host = "LOCALHOST";
+            if (String.IsNullOrEmpty(host))
+                host = "LOCALHOST";
 
-                if (String.IsNullOrEmpty(channel))
-                    return "#channel Required#";
+            if (String.IsNullOrEmpty(channel))
+                return "#channel Required#"; 
 
-            //    if (_subMgr.Subscribe(topicId, host, channel, field))
-            //        return _subMgr.GetValue(topicId); // already subscribed 
+            object result;
+            if (cache.TryGetValue(topicId, out result))
+                return result;
 
-            //    if (!_subscribers.TryGetValue(host, out Subscriber subscriber))
-            //    {
-            //        IHTopic<string> hzTopic = client.GetTopicAsync<string>("my-topic").Result;
-            //        _subscribers[host] = subscriber = new Subscriber(hzTopic);  
-            //    }
 
-            //    Logger.Debug($"subscribing to {channel}");
+            var hzTopic = channel + "|" + field;
 
-            //    object value = subscriber.Subscribe(channel, (chan, message) =>
-            //    {
-            //        var rtdSubTopic = SubscriptionManager.FormatPath(host, chan);
-            //        try
-            //        {
-            //            var str = message.ToString();
-            //            _subMgr.Set(rtdSubTopic, str);
+            Thread worker = new Thread(new ThreadStart(() =>
+            {
+                while (client == null)
+                    ;
 
-            //            if (str.StartsWith("{"))
-            //            {
-            //                var jo = JsonConvert.DeserializeObject<Dictionary<String, object>>(str);
+                IHTopic<string> topic = client.GetTopicAsync<string>(hzTopic).Result;
+                topics.Add(hzTopic, topicId);
 
-            //                lock (_syncLock)
-            //                {
-            //                    foreach (string field_in in jo.Keys)
-            //                    {
-            //                        var rtdTopicString = SubscriptionManager.FormatPath(host, channel, field_in);
-            //                        object val = jo[field_in];
+                topic.SubscribeAsync((evt) => {
+                    Debug.Print("{}", evt);
+                    cache.AddToCache(hzTopic, topicId);
+                });
+            }));
+            worker.Start();
 
-            //                        _subMgr.Set(rtdTopicString, val);
-            //                    }
-            //                }
-            //            }
-            //        }
-            //        catch (Exception ex)
-            //        {
-            //            _subMgr.Set(rtdSubTopic, ex.Message);
-            //        }
-            //    });
-            //}
-            //catch (Exception ex)
-            //{
-            //    _subMgr.Set(topicId, ex.Message);
-            //}
             return cache.GetValue(topicId);
         }
         // Excel calls this when it wants to cancel subscription.
         void IRtdServer.DisconnectData(int topicId)
         {
             //var symbol = topics[topicId].Symbol;
-            topics.Remove(topicId);
+            //topics.Remove(topicId);
         }
         // Excel calls this every once in a while.
         int IRtdServer.Heartbeat()
@@ -162,7 +154,7 @@ namespace HazelcastRtd
             foreach (var item in topics)
             {
                 data[0, index] = item.Key;
-                data[1, index] = cache.GetValue(item.Value.Symbol);
+                data[1, index] = cache.GetValue(0);
                 index++;
             }
             topicCount = topics.Count;        //update Excel side topic count

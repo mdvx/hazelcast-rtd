@@ -13,7 +13,7 @@ namespace HazelcastRTD
                 .With("Logging:LogLevel:Default", "None")
                 .With("Logging:LogLevel:System", "Information")
                 .With("Logging:LogLevel:Microsoft", "Information")
-                .With("Logging:LogLevel:Hazelcast", hazelcastLogLevel.ToString())
+                //.With("Logging:LogLevel:Hazelcast", hazelcastLogLevel.ToString())
                 .With((configuration, options) =>
                 {
                     //configure logging factory and add the console provider

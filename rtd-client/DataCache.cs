@@ -28,5 +28,10 @@ namespace HazelcastRTD
 
             return null;    
         }
+
+        internal bool TryGetValue(int topicId, out object result)
+        {
+            return _cache.TryGetValue(topicId.ToString(), out result);
+        }
     }
 }

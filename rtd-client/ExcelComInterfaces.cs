@@ -1,16 +1,13 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace HazelcastRtd
+namespace HazelcastRTD
 {
     //
     // We provide definition of the RTD interfaces used by Excel
     // directly in this C# file. This way our assembly will not
     // have a dependency on Excel's type library.
     //
-    
-    
-    
     [Guid("A43788C1-D91B-11D3-8F39-00C04F3651B8")]  // DO NOT CHANGE: declared by excel
     public interface IRtdUpdateEvent
     {
