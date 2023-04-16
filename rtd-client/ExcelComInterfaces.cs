@@ -19,20 +19,20 @@ namespace HazelcastRTD
     [Guid("EC0E6191-DB51-11D3-8F3E-00C04F3651B8")]  // DO NOT CHANGE: declared by excel
     public interface IRtdServer
     {
-        public int ServerStart (IRtdUpdateEvent callback);
+        int ServerStart (IRtdUpdateEvent callback);
 
-        public object ConnectData (int topicId,
+        object ConnectData (int topicId,
                            [MarshalAs(UnmanagedType.SafeArray, SafeArraySubType = VarEnum.VT_VARIANT)]
                            ref Array strings,
                            ref bool newValues);
 
         [return: MarshalAs(UnmanagedType.SafeArray, SafeArraySubType = VarEnum.VT_VARIANT)] 
-        public Array RefreshData (ref int topicCount);
+        Array RefreshData (ref int topicCount);
 
-        public void DisconnectData (int topicId);
+        void DisconnectData (int topicId);
 
-        public int Heartbeat ();
+        int Heartbeat ();
 
-        public void ServerTerminate ();
+        void ServerTerminate ();
     }
 }

@@ -54,11 +54,11 @@ namespace HazelcastRTD
                 {
                     try
                     {
-                        client = HazelcastClientFactory.StartNewClientAsync(new HazelcastOptionsBuilder()
-                                    //.WithConsoleLogger(LogLevel.Information)
-                                    .Build()).Result;
+                        //client = HazelcastClientFactory.StartNewClientAsync(new HazelcastOptionsBuilder()
+                        //            //.WithConsoleLogger(LogLevel.Information)
+                        //            .Build()).Result;
 
-                        client.SubscribeAsync((e) => { Debug.WriteLine("ServerStart: SubscribeAsync", e); }).Wait();
+                        //client.SubscribeAsync((e) => { Debug.WriteLine("ServerStart: SubscribeAsync", e); }).Wait();
                     }
                     catch (Exception ex)
                     {
