@@ -11,9 +11,9 @@ using HazelcastRTD;
 using Hazelcast.DistributedObjects;
 using Hazelcast;
 using System.Xml.Linq;
-using Microsoft.Extensions.Logging;
 using System.Diagnostics;
-using Microsoft.Extensions.Options;
+//using Microsoft.Extensions.Logging;
+//using Microsoft.Extensions.Options;
 
 namespace HazelcastRTD
 {
@@ -54,15 +54,15 @@ namespace HazelcastRTD
                 {
                     try
                     {
-                        //client = HazelcastClientFactory.StartNewClientAsync(new HazelcastOptionsBuilder()
-                        //            //.WithConsoleLogger(LogLevel.Information)
-                        //            .Build()).Result;
+                        client = HazelcastClientFactory.StartNewClientAsync(new HazelcastOptionsBuilder()
+                                    //.WithConsoleLogger(LogLevel.Information)
+                                    .Build()).Result;
 
-                        //client.SubscribeAsync((e) => { Debug.WriteLine("ServerStart: SubscribeAsync", e); }).Wait();
+                        client.SubscribeAsync((e) => { Debug.WriteLine("ServerStart: SubscribeAsync", e); }).Wait();
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine("ERR: {}", ex.Message);
+                        Debug.WriteLine("ERR: " + ex.Message);
                         //return -1;  // 0 or negative FAIL
                     }
 
